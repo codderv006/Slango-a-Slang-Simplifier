@@ -1,4 +1,5 @@
-
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:slango/dictionary.dart';
 
@@ -31,14 +32,42 @@ class SlangoScreen extends StatefulWidget {
 class _SlangoScreenState extends State<SlangoScreen> {
   final slangController = TextEditingController();
   String translation = '';
+  List<Map<String, String>> slangsOfTheDay = [];
+  Timer? timer;
+
+  @override
+  void initState() {
+    super.initState();
+    generateSlangsOfTheDay();
+
+    // Schedule timer to update slangs of the day every 24 hours
+    timer = Timer.periodic(Duration(hours: 24), (_) {
+      setState(() {
+        generateSlangsOfTheDay();
+      });
+    });
+  }
 
   @override
   void dispose() {
+    timer?.cancel();
     slangController.dispose();
     super.dispose();
   }
 
-  void translateSlang(String slang) {
+  void generateSlangsOfTheDay() {
+    final allSlangs = dictionary.slangTranslations.keys.toList();
+    final random = Random();
+    slangsOfTheDay.clear();
+    for (var i = 0; i < 5; i++) {
+      final randomSlang = allSlangs[random.nextInt(allSlangs.length)];
+      final meaning = dictionary.slangTranslations[randomSlang];
+      slangsOfTheDay.add({'slang': randomSlang, 'meaning': meaning ?? ''});
+    }
+  }
+
+  void translateSlang() {
+    final slang = slangController.text;
     if (slang.isEmpty) {
       setState(() {
         translation = '';
@@ -71,23 +100,35 @@ class _SlangoScreenState extends State<SlangoScreen> {
             TextField(
               controller: slangController,
               decoration: InputDecoration(
-                labelText: 'Enter a slang term (Capital)',
+                labelText: 'Enter a slang term',
               ),
-              onSubmitted: (value) {
-                translateSlang(value);
-              },
+              onSubmitted: (_) => translateSlang(),
             ),
             SizedBox(height: 16.0),
             ElevatedButton(
-              onPressed: () {
-                translateSlang(slangController.text);
-              },
+              onPressed: translateSlang,
               child: Text('Translate'),
             ),
             SizedBox(height: 16.0),
             Text(
               'Translation: $translation',
               style: TextStyle(fontSize: 18.0),
+            ),
+            SizedBox(height: 32.0),
+            Text(
+              'Slangs of the Day:',
+              style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8.0),
+            Column(
+              children: slangsOfTheDay
+                  .map((slangData) => ListTile(
+                        title: Text(
+                          '${slangData['slang']}: ${slangData['meaning']}',
+                          style: TextStyle(fontSize: 16.0),
+                        ),
+                      ))
+                  .toList(),
             ),
           ],
         ),
